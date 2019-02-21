@@ -1,0 +1,37 @@
+项目要做一个签到功能,因为每天都要记录下用户要吃什么所以打算使用jsonfield来存储吃的内容和时间.
+结构目录如下
+{
+2019{
+2{
+1{
+  p:地点,
+  f:食物.
+}
+}
+}
+}
+后来发现在数据库里存到不是直接utf-8的中文编码而是unicode.
+通过查看jsonfield的源码发现
+def dumps_for_display(self, value):
+        kwargs = {"indent": 2}
+        kwargs.update(self.dump_kwargs)
+        return json.dumps(value, **kwargs)
+json.dumps 中的参数 ensure_ascii 使用的默认为 True
+所以在使用json的时候
+class MyjsonField(jsonfield.JSONField):
+    def dumps_for_display(self, value):
+        kwargs = {"indent": 2}
+        kwargs.update(self.dump_kwargs)
+        return json.dumps(value, **kwargs, ensure_ascii=False)  # 不对中文进行Unicod编码
+ 通过继承 来自定义参数
+ class SignIN(models.Model):  # 统计签到数据的表
+
+    ''' 统计用户签到的表 '''
+    user_id = models.IntegerField(verbose_name='用户', primary_key=True)
+    sign_time = models.DateTimeField(verbose_name='最后一次签到时间', default=timezone.now)
+    sign_days = models.IntegerField(verbose_name='连续登录天数', default=1)
+    sign_am = models.BooleanField(verbose_name='中午是否签到', default=False)
+    sign_pm = models.BooleanField(verbose_name='下午是否签到', default=False)
+    data_am = MyjsonField(verbose_name='中午签到的数据', default=dict)
+    data_pm = MyjsonField(verbose_name='下午签到的数据', default=dict)
+测试后发现显示正常 中文显示为utf-8编码
